@@ -25,6 +25,7 @@ policy, hooks, and lifecycle controls on top.
 """
 
 import os
+import platform
 import subprocess
 
 try:
@@ -49,11 +50,31 @@ if os.getenv("ANTHROPIC_BASE_URL"):
 client = Anthropic(base_url=os.getenv("ANTHROPIC_BASE_URL"))
 MODEL = os.environ["MODEL_ID"]
 
-SYSTEM = f"You are a coding agent at {os.getcwd()}. Use bash to solve tasks. Act, don't explain."
+# Detect platform and shell — used ONLY to tell the LLM what commands to generate.
+# subprocess.run(shell=True) always uses the OS default shell; do NOT override executable.
+PLATFORM = platform.system()
+if PLATFORM != "Windows":
+    SHELL_NAME = "bash"
+elif "bash" in os.environ.get("SHELL", "").lower():
+    SHELL_NAME = "bash (Git Bash)"
+else:
+    SHELL_NAME = "cmd.exe (Windows Command Prompt)"
+
+PLATFORM_HINT = (
+    f"You are running on {PLATFORM} with {SHELL_NAME}. "
+    f"Always generate commands compatible with {SHELL_NAME}. "
+    f"{'Use Unix commands: cat, ls, grep, find, mkdir, etc.' if 'bash' in SHELL_NAME else 'Use Windows commands: type, dir, findstr, mkdir, etc.'} "
+    f"The working directory is: {os.getcwd()}"
+)
+
+SYSTEM = PLATFORM_HINT + ". Act, don't explain."
 
 TOOLS = [{
     "name": "bash",
-    "description": "Run a shell command.",
+    "description": (
+        f"Run a shell command on {PLATFORM} ({SHELL_NAME}). "
+        f"{'Use Unix commands: cat, ls, grep, find, mkdir, etc.' if 'bash' in SHELL_NAME else 'Use Windows commands: type, dir, findstr, mkdir, etc.'}"
+    ),
     "input_schema": {
         "type": "object",
         "properties": {"command": {"type": "string"}},
@@ -68,18 +89,20 @@ def run_bash(command: str) -> str:
         return "Error: Dangerous command blocked"
     try:
         r = subprocess.run(command, shell=True, cwd=os.getcwd(),
-                           capture_output=True, text=True, timeout=120)
+                           capture_output=True, text=True, encoding='utf-8',
+                           errors='replace', timeout=120)
         out = (r.stdout + r.stderr).strip()
         return out[:50000] if out else "(no output)"
     except subprocess.TimeoutExpired:
         return "Error: Timeout (120s)"
-    except (FileNotFoundError, OSError) as e:
+    except (UnicodeDecodeError, FileNotFoundError, OSError) as e:
         return f"Error: {e}"
 
 
 # -- The core pattern: a while loop that calls tools until the model stops --
 def agent_loop(messages: list):
     while True:
+        print(f'message list before invoke is {messages}')
         response = client.messages.create(
             model=MODEL, system=SYSTEM, messages=messages,
             tools=TOOLS, max_tokens=8000,
@@ -88,6 +111,7 @@ def agent_loop(messages: list):
         messages.append({"role": "assistant", "content": response.content})
         # If the model didn't call a tool, we're done
         if response.stop_reason != "tool_use":
+            print(f'message list after invoke is {messages}')
             return
         # Execute each tool call, collect results
         results = []
@@ -99,7 +123,7 @@ def agent_loop(messages: list):
                 results.append({"type": "tool_result", "tool_use_id": block.id,
                                 "content": output})
         messages.append({"role": "user", "content": results})
-
+        print(f'message list after invoke is {messages}')
 
 if __name__ == "__main__":
     history = []
