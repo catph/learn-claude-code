@@ -234,13 +234,15 @@ Treat the team JSONL mailbox protocol in this repo as a teaching implementation,
 ```sh
 git clone https://github.com/shareAI-lab/learn-claude-code
 cd learn-claude-code
-pip install -r requirements.txt
-cp .env.example .env   # Edit .env with your ANTHROPIC_API_KEY
+uv sync                              # requires [uv](https://docs.astral.sh/uv/)
+cp .env.example .env   # Edit .env with your API key
 
-python agents/s01_agent_loop.py       # Start here
-python agents/s12_worktree_task_isolation.py  # Full progression endpoint
-python agents/s_full.py               # Capstone: all mechanisms combined
+uv run python agents/s01_agent_loop.py       # Start here
+uv run python agents/s12_worktree_task_isolation.py  # Full progression endpoint
+uv run python agents/s_full.py               # Capstone: all mechanisms combined
 ```
+
+Without uv: `pip install -r requirements.txt`
 
 ### Web Platform
 

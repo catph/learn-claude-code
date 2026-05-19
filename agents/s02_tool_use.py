@@ -21,19 +21,31 @@ Key insight: "The loop didn't change at all. I just added tools."
 
 import os
 import subprocess
+import platform
 from pathlib import Path
 
-from anthropic import Anthropic
 from dotenv import load_dotenv
+from llm_adapter import create_llm_client, get_model_id
 
 load_dotenv(override=True)
 
-if os.getenv("ANTHROPIC_BASE_URL"):
-    os.environ.pop("ANTHROPIC_AUTH_TOKEN", None)
-
 WORKDIR = Path.cwd()
-client = Anthropic(base_url=os.getenv("ANTHROPIC_BASE_URL"))
-MODEL = os.environ["MODEL_ID"]
+client = create_llm_client()
+MODEL = get_model_id()
+
+PLATFORM = platform.system()
+if PLATFORM != "Windows":
+    SHELL_NAME = "bash"
+elif "bash" in os.environ.get("SHELL", "").lower():
+    SHELL_NAME = "bash (Git Bash)"
+else:
+    SHELL_NAME = "cmd.exe (Windows Command Prompt)"
+PLATFORM_HINT = (
+    f"You are running on {PLATFORM} with {SHELL_NAME}. "
+    f"Always generate commands compatible with {SHELL_NAME}. "
+    f"{'Use Unix commands: cat, ls, grep, find, mkdir, etc.' if 'bash' in SHELL_NAME else 'Use Windows commands: type, dir, findstr, mkdir, etc.'} "
+    f"The working directory is: {os.getcwd()}"
+)
 
 SYSTEM = f"You are a coding agent at {WORKDIR}. Use tools to solve tasks. Act, don't explain."
 
@@ -93,14 +105,17 @@ def run_edit(path: str, old_text: str, new_text: str) -> str:
 
 # -- The dispatch map: {tool_name: handler} --
 TOOL_HANDLERS = {
-    "bash":       lambda **kw: run_bash(kw["command"]),
-    "read_file":  lambda **kw: run_read(kw["path"], kw.get("limit")),
+    "bash": lambda **kw: run_bash(kw["command"]),
+    "read_file": lambda **kw: run_read(kw["path"], kw.get("limit")),
     "write_file": lambda **kw: run_write(kw["path"], kw["content"]),
-    "edit_file":  lambda **kw: run_edit(kw["path"], kw["old_text"], kw["new_text"]),
+    "edit_file": lambda **kw: run_edit(kw["path"], kw["old_text"], kw["new_text"]),
 }
 
 TOOLS = [
-    {"name": "bash", "description": "Run a shell command.",
+    {"name": "bash",  "description": (
+        f"Run a shell command on {PLATFORM} ({SHELL_NAME}). "
+        f"{'Use Unix commands: cat, ls, grep, find, mkdir, etc.' if 'bash' in SHELL_NAME else 'Use Windows commands: type, dir, findstr, mkdir, etc.'}"
+    ),
      "input_schema": {"type": "object", "properties": {"command": {"type": "string"}}, "required": ["command"]}},
     {"name": "read_file", "description": "Read file contents.",
      "input_schema": {"type": "object", "properties": {"path": {"type": "string"}, "limit": {"type": "integer"}}, "required": ["path"]}},

@@ -12,16 +12,15 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Set up Python
-        uses: actions/setup-python@v6
+      - uses: astral-sh/setup-uv@v6
         with:
-          python-version: "3.11"
+          enable-cache: true
 
       - name: Install dependencies
-        run: pip install anthropic python-dotenv pytest
+        run: uv sync --group dev
 
       - name: Run Python smoke tests
-        run: python -m pytest tests/test_agents_smoke.py -q
+        run: uv run pytest tests/test_agents_smoke.py -q
 
   web-build:
     runs-on: ubuntu-latest

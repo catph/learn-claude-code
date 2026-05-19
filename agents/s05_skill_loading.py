@@ -41,17 +41,14 @@ import subprocess
 import yaml
 from pathlib import Path
 
-from anthropic import Anthropic
 from dotenv import load_dotenv
+from llm_adapter import create_llm_client, get_model_id
 
 load_dotenv(override=True)
 
-if os.getenv("ANTHROPIC_BASE_URL"):
-    os.environ.pop("ANTHROPIC_AUTH_TOKEN", None)
-
 WORKDIR = Path.cwd()
-client = Anthropic(base_url=os.getenv("ANTHROPIC_BASE_URL"))
-MODEL = os.environ["MODEL_ID"]
+client = create_llm_client()
+MODEL = get_model_id()
 SKILLS_DIR = WORKDIR / "skills"
 
 

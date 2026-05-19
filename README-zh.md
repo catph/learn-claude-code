@@ -235,13 +235,15 @@ def agent_loop(messages):
 ```sh
 git clone https://github.com/shareAI-lab/learn-claude-code
 cd learn-claude-code
-pip install -r requirements.txt
-cp .env.example .env   # 编辑 .env 填入你的 ANTHROPIC_API_KEY
+uv sync                              # 需要 [uv](https://docs.astral.sh/uv/)
+cp .env.example .env   # 编辑 .env 填入你的 API Key
 
-python agents/s01_agent_loop.py       # 从这里开始
-python agents/s12_worktree_task_isolation.py  # 完整递进终点
-python agents/s_full.py               # 总纲: 全部机制合一
+uv run python agents/s01_agent_loop.py       # 从这里开始
+uv run python agents/s12_worktree_task_isolation.py  # 完整递进终点
+uv run python agents/s_full.py               # 总纲: 全部机制合一
 ```
+
+没有 uv 时仍可用 pip：`pip install -r requirements.txt`
 
 ### Web 平台
 

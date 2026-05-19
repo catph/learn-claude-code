@@ -39,16 +39,13 @@ try:
 except ImportError:
     pass
 
-from anthropic import Anthropic
 from dotenv import load_dotenv
+from llm_adapter import create_llm_client, get_model_id
 
 load_dotenv(override=True)
 
-if os.getenv("ANTHROPIC_BASE_URL"):
-    os.environ.pop("ANTHROPIC_AUTH_TOKEN", None)
-
-client = Anthropic(base_url=os.getenv("ANTHROPIC_BASE_URL"))
-MODEL = os.environ["MODEL_ID"]
+client = create_llm_client()
+MODEL = get_model_id()
 
 # Detect platform and shell — used ONLY to tell the LLM what commands to generate.
 # subprocess.run(shell=True) always uses the OS default shell; do NOT override executable.
